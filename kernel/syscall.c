@@ -34,7 +34,7 @@ fetchstr(uint64 addr, char *buf, int max)
 static uint64
 argraw(int n)
 {
-  struct proc *p = myproc();
+  struct proc *p = myproc();		//这里需要去看源手册，看寄存器放的是什么
   switch (n) {
   case 0:
     return p->trapframe->a0;
@@ -168,9 +168,9 @@ syscall(void)
 
   num = p->trapframe->a7;
   if(num > 0 && num < NELEM(syscalls) && syscalls[num]) {
-    p->trapframe->a0 = syscalls[num]();
-    int trace_mask = p->trace_mask;
-    if((trace_mask>>num) & 1){
+    p->trapframe->a0 = syscalls[num]();		//a0放的是系统调用返回值,用trace则是sysread赋值给了a0
+    int trace_mask = p->trace_mask;		//trace掩码
+    if((trace_mask>>num) & 1){			//如果系统调用正确，则输出对应信息
     	printf("%d: syscall %s -> %d\n",p->pid,syscalls_name[num],p->trapframe->a0);
     }
   } else {

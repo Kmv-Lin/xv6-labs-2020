@@ -8,8 +8,8 @@
 #include "proc.h"
 #include "sysinfo.h"
 
-uint64 acquire_freemem(void);
-uint64 acquire_nproc(void);
+uint64 acquire_freemem(void);		//sysinfo
+uint64 acquire_nproc(void);		//函数提前声明
 
 uint64
 sys_exit(void)
@@ -104,26 +104,27 @@ uint64
 sys_trace(void)
 {
   int mask;
-  if(argint(0, &mask) < 0)
+  if(argint(0, &mask) < 0)	//把a0寄存器的值给mask
     return -1;
   struct proc *p = myproc();
-  p->trace_mask = mask;
+  p->trace_mask = mask;		//把mask掩码赋值给进程状态结构体
   return 0;
 }
 
 uint64
 sys_sysinfo(void)
 {
-  struct proc *p = myproc();
+  struct proc *p = myproc();		//进程状态结构体
   uint64 addr; // user pointer to struct stat
-  struct sysinfo info;
+  struct sysinfo info;			//空闲内存和进程结构体，见sysinfo.h
 
-  info.freemem = acquire_freemem();
-  info.nproc = acquire_nproc();
+  info.freemem = acquire_freemem();	//空闲内存大小(实际为链表)
+  info.nproc = acquire_nproc();		//空闲进程个数
 
   if(argaddr(0, &addr) < 0)	//把p->a0寄存器的值给addr
     return -1;  
 
+  //从info拷贝info大小的数据放到pagetable页表的addr位置上
   if(copyout(p->pagetable, addr, (char *)&info, sizeof(info)) < 0)
       return -1;
 

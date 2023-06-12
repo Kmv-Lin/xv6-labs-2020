@@ -697,7 +697,7 @@ procdump(void)
   }
 }
 
-uint64 acquire_nproc(void){
+uint64 acquire_nproc(void){			//用于sysinfo 获取空闲进程
   struct proc *p;
   uint64 cnt = 0; 
 
