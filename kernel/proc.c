@@ -161,7 +161,9 @@ freeproc(struct proc *p)
   p->pagetable = 0;
   if(p->kernelpt){
     uvmunmap(p->kernelpt,p->kstack,1,1);
-    proc_freekernelpt(p->kernelpt);}	
+    proc_freekernelpt(p->kernelpt);
+  }	
+  p->kernelpt = 0;
   p->kstack = 0;
   p->sz = 0;
   p->pid = 0;
@@ -261,6 +263,7 @@ userinit(void)
   // and data into it.
   uvminit(p->pagetable, initcode, sizeof(initcode));
   p->sz = PGSIZE;
+  u2kvmcopy(p->pagetable,p->kernelpt,0,p->sz);
 
   // prepare for the very first "return" from kernel to user.
   p->trapframe->epc = 0;      // user program counter
@@ -284,11 +287,20 @@ growproc(int n)
 
   sz = p->sz;
   if(n > 0){
-    if((sz = uvmalloc(p->pagetable, sz, sz + n)) == 0) {
+    if(PGROUNDUP(sz + n) >= PLIC){
       return -1;
     }
+    if((sz = uvmalloc(p->pagetable, sz, sz + n)) == 0 ) {
+      return -1;
+    }
+    u2kvmcopy(p->pagetable,p->kernelpt,sz-n,sz);
   } else if(n < 0){
     sz = uvmdealloc(p->pagetable, sz, sz + n);
+    int newsz = p->sz + n;
+    if(PGROUNDUP(newsz) < PGROUNDUP(p->sz)){
+    	int npages = (PGROUNDUP(p->sz) - PGROUNDUP(newsz)) / PGSIZE;
+	uvmunmap(p->kernelpt,PGROUNDUP(newsz),npages,0);
+    }
   }
   p->sz = sz;
   return 0;
@@ -317,6 +329,8 @@ fork(void)
   np->sz = p->sz;
 
   np->parent = p;
+
+  u2kvmcopy(np->pagetable,np->kernelpt,0,np->sz);
 
   // copy saved user registers.
   *(np->trapframe) = *(p->trapframe);
