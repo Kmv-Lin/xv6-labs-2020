@@ -77,9 +77,15 @@ usertrap(void)
     exit(-1);
 
   // give up the CPU if this is a timer interrupt.
-  if(which_dev == 2)
+  if(which_dev == 2){
+    if(++p->alarm_cnt == p->alarm_ticks && !p->alarm_lock){	//如果计时已到，并且没有其他进程运行(解锁状态)
+    	*p->alarm_trapframe = *p->trapframe;			//保存现场，保存当前32个寄存器的值
+	p->trapframe->epc = (uint64)p->alarm_handler;		//跳转，执行中断处理函数
+	p->alarm_cnt = 0;					//计数值清0
+	p->alarm_lock = 1;					//锁定
+    }
     yield();
-
+  }
   usertrapret();
 }
 

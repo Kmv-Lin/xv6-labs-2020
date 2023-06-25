@@ -70,6 +70,7 @@ sys_sleep(void)
     sleep(&ticks, &tickslock);
   }
   release(&tickslock);
+  backtrace();
   return 0;
 }
 
@@ -95,3 +96,19 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+uint64 sys_sigalarm(void){
+	if(argint(0,&myproc()->alarm_ticks) < 0)		//获取第0个int型参数，赋值给ticks
+		return -1;
+	if(argaddr(1,(uint64*)&myproc()->alarm_handler) < 0)		//获取第1个地址参数，赋值给handler
+		return -1;
+	return 0;
+}
+
+uint64 sys_sigreturn(void){
+	struct proc *p = myproc();
+	*p->trapframe = *p->alarm_trapframe;		//恢复现场，恢复寄存器的值
+	p->alarm_lock = 0;				//解锁
+	return 0;	
+}
+

@@ -1,0 +1,7 @@
+a0,a1
+g is inlined within f,and f is inlined within main
+630
+0x38
+He110 World
+i = 0x726c6400, no need
+random value,because it lacks an argument,so register a2 is dependent on previous value
