@@ -67,7 +67,28 @@ usertrap(void)
     syscall();
   } else if((which_dev = devintr()) != 0){
     // ok
-  } else {
+  } else if(r_scause() == 13 || r_scause() == 15){
+  	uint64 va = r_stval();				//获取页面出错的虚拟地址
+	if(va >= p->sz){				//进程错误地址高于虚拟内存地址
+		p->killed = 1;
+	}else if(va < PGROUNDDOWN(p->trapframe->sp)){	//地址位于用户栈下面的GUARD PAGE无效页面
+		p->killed = 1;
+	}else{
+	char *mem = kalloc();				//分配内存
+        if(mem == 0){ 					//内存不足
+      		p->killed = 1;
+    	}else{   
+		va = PGROUNDDOWN(va);			//虚拟地址向下舍入到页面边界
+    		memset(mem, 0, PGSIZE);
+    		if(mappages(p->pagetable, va, PGSIZE, (uint64)mem, PTE_W|PTE_X|PTE_R|PTE_U) != 0){
+      			kfree(mem);			//分配映射表
+      			p->killed = 1;
+    		}
+	    }
+	}	
+
+  }
+  else {
     printf("usertrap(): unexpected scause %p pid=%d\n", r_scause(), p->pid);
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;

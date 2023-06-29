@@ -5,8 +5,6 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
-#include "spinlock.h"
-#include "proc.h"
 
 /*
  * the kernel's page table.
@@ -58,7 +56,7 @@ kvminithart()
   sfence_vma();
 }
 
-// Return the address of the PTE in page table pagetable	//由虚拟地址找到对应的PTE
+// Return the address of the PTE in page table pagetable
 // that corresponds to virtual address va.  If alloc!=0,
 // create any required page-table pages.
 //
@@ -90,7 +88,7 @@ walk(pagetable_t pagetable, uint64 va, int alloc)
   return &pagetable[PX(0, va)];
 }
 
-// Look up a virtual address, return the physical address,	//由虚拟地址找到物理地址
+// Look up a virtual address, return the physical address,
 // or 0 if not mapped.
 // Can only be used to look up user pages.
 uint64
@@ -107,7 +105,7 @@ walkaddr(pagetable_t pagetable, uint64 va)
   if(pte == 0 || (*pte & PTE_V) == 0){
  	if(va >= p->sz){
                 return 0;
-        }else if(va < PGROUNDDOWN(p->trapframe->sp)){
+        }else if(va < PGROUNDDOWN(p->trapframe->sz)){
                 return 0;
         }else{
         char *mem = kalloc();
@@ -120,7 +118,7 @@ walkaddr(pagetable_t pagetable, uint64 va)
                         kfree(mem);
                         return 0;
                 }
-		return (uint64)mem;		//返回新的物理地址
+		return (uint64)mem;
             }
         }   
   }
@@ -199,10 +197,10 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
     panic("uvmunmap: not aligned");
 
   for(a = va; a < va + npages*PGSIZE; a += PGSIZE){
-    if((pte = walk(pagetable, a, 0)) == 0)	//懒分配，没用内存就没有映射，即无法从虚拟地址找到PTE，所以这里需要让它继续执行
+    if((pte = walk(pagetable, a, 0)) == 0)
       //panic("uvmunmap: walk");
       continue;
-    if((*pte & PTE_V) == 0)			//如果PTE不存在于页表中，也让它继续执行
+    if((*pte & PTE_V) == 0)
       //panic("uvmunmap: not mapped");
       continue;
     if(PTE_FLAGS(*pte) == PTE_V)

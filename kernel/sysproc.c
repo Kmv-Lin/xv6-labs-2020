@@ -47,8 +47,14 @@ sys_sbrk(void)
   if(argint(0, &n) < 0)
     return -1;
   addr = myproc()->sz;
-  if(growproc(n) < 0)
-    return -1;
+  if(n < 0){			//如果sbrk参数为负
+	if(myproc() + n < 0)    //缩小的空间不能小于0
+  		return -1;
+	uvmdealloc(myproc()->pagetable,myproc()->sz,myproc()->sz+n);//释放空间的页表
+  }
+  myproc()->sz += n;		//懒分配，只增加进程大小
+  //if(growproc(n) < 0)
+  //  return -1;
   return addr;
 }
 
