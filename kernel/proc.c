@@ -466,6 +466,7 @@ scheduler(void)
     
     int nproc = 0;
     for(p = proc; p < &proc[NPROC]; p++) {
+   //   scheduler_info("scheduler proc_%d acquire lock\n",p->pid);
       acquire(&p->lock);
       if(p->state != UNUSED) {
         nproc++;
@@ -482,6 +483,7 @@ scheduler(void)
         // It should have changed its p->state before coming back.
         c->proc = 0;
       }
+ //     scheduler_info("scheduler proc_%d release lock\n",p->pid);
       release(&p->lock);
     }
     if(nproc <= 2) {   // only init and sh exist
@@ -523,9 +525,11 @@ void
 yield(void)
 {
   struct proc *p = myproc();
+//  info("proc_%d acquire lock\n",myproc()->pid);
   acquire(&p->lock);
   p->state = RUNNABLE;
   sched();
+//  info("proc_%d release lock\n",myproc()->pid);
   release(&p->lock);
 }
 
