@@ -165,6 +165,7 @@ bad:
   return -1;
 }
 
+
 // Is the directory dp empty except for "." and ".." ?
 static int
 isdirempty(struct inode *dp)
@@ -296,6 +297,9 @@ sys_open(void)
     return -1;
 
   begin_op();
+   // 若符号链接指向的仍然是符号链接，则递归的跟随它
+   // 直到找到真正指向的文件
+   // 但深度不能超过MAX_SYMLINK_DEPTH
 
   if(omode & O_CREATE){
     ip = create(path, T_FILE, 0, 0);
@@ -304,11 +308,29 @@ sys_open(void)
       return -1;
     }
   } else {
-    if((ip = namei(path)) == 0){
-      end_op();
-      return -1;
+    int symlink_depth = 0;
+    while(1){
+      if((ip = namei(path)) == 0){
+        end_op();
+        return -1;
+      }
+      ilock(ip);
+      if(ip->type == T_SYMLINK && (omode & O_NOFOLLOW) == 0){
+      	if(++symlink_depth > 10){
+	  iunlockput(ip);
+      	  end_op();
+      	  return -1;  
+	}
+	if(readi(ip,0,(uint64)path,0,MAXPATH) < 0){
+	  iunlockput(ip);
+          end_op();
+          return -1;
+	}
+	iunlockput(ip);
+      }else{
+        break;
+      }
     }
-    ilock(ip);
     if(ip->type == T_DIR && omode != O_RDONLY){
       iunlockput(ip);
       end_op();
@@ -484,3 +506,33 @@ sys_pipe(void)
   }
   return 0;
 }
+
+uint64
+sys_symlink(void)
+{
+  char target[MAXPATH], path[MAXPATH];
+  struct inode *ip;
+
+  if(argstr(0, target, MAXPATH) < 0 || argstr(1, path, MAXPATH) < 0)
+    return -1;
+
+  begin_op();
+  // 分配一个inode结点，create返回锁定的inode
+  ip = create(path,T_SYMLINK,0,0);
+  if(ip == 0){
+    end_op();
+    return -1;
+  }
+  // 向inode数据块中写入target路径
+  if(writei(ip,0,(uint64)target,0,strlen(target)) < 0){
+    end_op();
+    return -1;
+  }
+
+  iunlockput(ip);
+
+  end_op();
+
+  return 0;
+}
+
